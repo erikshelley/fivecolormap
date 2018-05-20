@@ -23,13 +23,15 @@
 """
 from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QFileDialog
 
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
 from .five_color_map_dialog import FiveColorMapDialog
 import os.path
+
+from qgis.core import QgsProject
 
 
 class FiveColorMap:
@@ -70,6 +72,9 @@ class FiveColorMap:
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'FiveColorMap')
         self.toolbar.setObjectName(u'FiveColorMap')
+
+        self.dlg.lineEdit.clear()
+        self.dlg.pushButton.clicked.connect(self.select_output_file)
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -160,6 +165,10 @@ class FiveColorMap:
 
         return action
 
+    def select_output_file(self):
+        filename = QFileDialog.getSaveFileName(self.dlg, "Select output file ","", '*.csv')
+        self.dlg.lineEdit.setText(filename[0])
+
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
@@ -184,6 +193,20 @@ class FiveColorMap:
 
     def run(self):
         """Run method that performs all the real work"""
+
+        #for layer in list(allLayers.items()):
+        layers = QgsProject.instance().mapLayers()
+        layer_list = []
+        for (id, layer) in list(layers.items()):
+            layer_list.append(layer.name())
+            self.dlg.comboBox.addItems(layer_list)
+
+        #layers = self.iface.legendInterface().layers()
+        #layer_list = []
+        #for layer in layers:
+        #    layer_list.append(layer.name())
+        #    self.dlg.comboBox.addItems(layer_list)
+
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
@@ -193,3 +216,24 @@ class FiveColorMap:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+            #filename = self.dlg.lineEdit.text()
+            #output_file = open(filename, 'wb')
+
+            #selectedLayerIndex = self.dlg.comboBox.currentIndex()
+            ##selectedLayer = layers[selectedLayerIndex]
+            ##selectedLayer = layers.values()[selectedLayerIndex]
+            #(id, selectedLayer) = list(layers.items())[selectedLayerIndex]
+            ##fields = selectedLayer.pendingFields()
+            #fields = selectedLayer.fields()
+            #fieldnames = [field.name() for field in fields]
+
+            #line = ','.join(unicode(x) for x in fieldnames) + '\n'
+            #unicode_line = line.encode('utf-8')
+            #output_file.write(unicode_line)
+            #for f in selectedLayer.getFeatures():
+            #    line = ','.join(unicode(f[x]) for x in fieldnames) + '\n'
+            #    unicode_line = line.encode('utf-8')
+            #    output_file.write(unicode_line)
+            #output_file.close()
+
+
