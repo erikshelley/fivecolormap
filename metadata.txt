@@ -1,0 +1,39 @@
+# This file contains metadata for your plugin. Since 
+# version 2.0 of QGIS this is the proper way to supply 
+# information about a plugin. The old method of 
+# embedding metadata in __init__.py will 
+# is no longer supported since version 2.0.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=FiveColorMap
+qgisMinimumVersion=3.0
+description=This plugin colors each shape differently than its neighbors using five colors
+version=0.1
+author=Erik Shelley
+email=erik@erikshelley.com
+
+about=This plugin colors each shape differently than its neighbors using five colors
+
+tracker=https://github.com/erikshelley/fivecolormap/issues
+repository=https://github.com/erikshelley/fivecolormap
+# End of mandatory metadata
+
+# Recommended items:
+
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=python
+
+homepage=https://github.com/erikshelley/fivecolormap
+category=Plugins
+icon=icon.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
