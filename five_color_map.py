@@ -31,7 +31,8 @@ from .resources import *
 from .five_color_map_dialog import FiveColorMapDialog
 import os.path
 
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsMapLayer, QgsWkbTypes, Qgis, QgsMessageLog
+from qgis.gui import QgsMessageBar
 
 
 class FiveColorMap:
@@ -47,8 +48,10 @@ class FiveColorMap:
         """
         # Save reference to the QGIS interface
         self.iface = iface
+
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
+
         # initialize locale
         locale = QSettings().value('locale/userLocale')[0:2]
         locale_path = os.path.join(
@@ -69,12 +72,16 @@ class FiveColorMap:
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&FiveColorMap')
+
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'FiveColorMap')
         self.toolbar.setObjectName(u'FiveColorMap')
 
-        self.dlg.lineEdit.clear()
-        self.dlg.pushButton.clicked.connect(self.select_output_file)
+        #self.dlg.lineEdit.clear()
+        #self.dlg.pushButton.clicked.connect(self.select_output_file)
+        self.dlg.comboBoxLayer.currentIndexChanged.connect(self.layer_changed)
+        self.dlg.comboBoxField.currentIndexChanged.connect(self.field_changed)
+
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -165,9 +172,6 @@ class FiveColorMap:
 
         return action
 
-    def select_output_file(self):
-        filename = QFileDialog.getSaveFileName(self.dlg, "Select output file ","", '*.csv')
-        self.dlg.lineEdit.setText(filename[0])
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
@@ -191,49 +195,56 @@ class FiveColorMap:
         del self.toolbar
 
 
+    def layer_changed(self):
+        self.dlg.comboBoxField.clear()
+        selectedLayerIndex = self.dlg.comboBoxLayer.currentIndex()
+        self.selectedLayer = self.vp_layers[selectedLayerIndex]
+        #self.iface.messageBar().pushMessage("Layer Selected", self.selectedLayer.name(), level=Qgis.Info, duration=1)
+        QgsMessageLog.logMessage("Layer Selected: " + self.selectedLayer.name(), level=Qgis.Info)
+        fields = self.selectedLayer.fields()
+        self.fieldname_list = [field.name() for field in fields]
+        self.dlg.comboBoxField.addItems(self.fieldname_list)
+
+
+    def field_changed(self):
+        self.selectedFieldText = self.dlg.comboBoxField.itemText(self.dlg.comboBoxField.currentIndex()) 
+        if self.dlg.comboBoxField.currentIndex() > -1: 
+            #self.iface.messageBar().pushMessage("Field Selected", self.selectedFieldText, level=Qgis.Info, duration=1)
+            QgsMessageLog.logMessage("Field Selected: " + self.selectedFieldText, level=Qgis.Info)
+
+
     def run(self):
         """Run method that performs all the real work"""
 
-        #for layer in list(allLayers.items()):
-        layers = QgsProject.instance().mapLayers()
-        layer_list = []
-        for (id, layer) in list(layers.items()):
-            layer_list.append(layer.name())
-            self.dlg.comboBox.addItems(layer_list)
+        # Fill input layer ComboBox
+        self.dlg.comboBoxLayer.clear()
+        all_layers = QgsProject.instance().mapLayers()
+        self.vp_layers = []
+        for (id, layer) in list(all_layers.items()):
+            if layer.type() == QgsMapLayer.VectorLayer and layer.geometryType() == QgsWkbTypes.PolygonGeometry:
+                self.vp_layers.append(layer);
+                self.dlg.comboBoxLayer.addItem(layer.name(), layer.id())
 
-        #layers = self.iface.legendInterface().layers()
-        #layer_list = []
-        #for layer in layers:
-        #    layer_list.append(layer.name())
-        #    self.dlg.comboBox.addItems(layer_list)
+        # Pre-select active layer
+        active_layer = self.iface.activeLayer()
+        if active_layer:
+            if active_layer.type() == QgsMapLayer.VectorLayer and active_layer.geometryType() == QgsWkbTypes.PolygonGeometry:
+                index = self.dlg.comboBoxLayer.findData(active_layer.id())
+                self.dlg.comboBoxLayer.setCurrentIndex(index)
 
         # show the dialog
         self.dlg.show()
+
         # Run the dialog event loop
         result = self.dlg.exec_()
+
         # See if OK was pressed
         if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
-            #filename = self.dlg.lineEdit.text()
-            #output_file = open(filename, 'wb')
-
-            #selectedLayerIndex = self.dlg.comboBox.currentIndex()
-            ##selectedLayer = layers[selectedLayerIndex]
-            ##selectedLayer = layers.values()[selectedLayerIndex]
-            #(id, selectedLayer) = list(layers.items())[selectedLayerIndex]
-            ##fields = selectedLayer.pendingFields()
-            #fields = selectedLayer.fields()
-            #fieldnames = [field.name() for field in fields]
-
-            #line = ','.join(unicode(x) for x in fieldnames) + '\n'
-            #unicode_line = line.encode('utf-8')
-            #output_file.write(unicode_line)
-            #for f in selectedLayer.getFeatures():
-            #    line = ','.join(unicode(f[x]) for x in fieldnames) + '\n'
-            #    unicode_line = line.encode('utf-8')
-            #    output_file.write(unicode_line)
-            #output_file.close()
+            #feature_list = self.selectedLayer.getFeatures()
+            #for feature in feature_list:
+            #    QgsMessageLog.logMessage("Feature: " + str(feature.id()), level=Qgis.Info)
+            #self.selectedLayer.startEditing()
+            #self.selectedLayer.changeAttributeValue(0, self.fieldname_list.index(self.selectedFieldText), 1)
+            #self.selectedLayer.commitChanges()
 
 
