@@ -38,7 +38,8 @@ import os.path
 from qgis.core import QgsProject, QgsMapLayer, QgsWkbTypes, Qgis, QgsMessageLog, QgsGeometry
 from qgis.gui import QgsMessageBar
 
-import traceback, sys
+from .worker import WorkerSignals, Worker
+from .algorithm import FiveColor
 
 
 class FiveColorMap:
@@ -210,7 +211,7 @@ class FiveColorMap:
         selectedLayerIndex = self.dlg.comboBoxLayer.currentIndex()
         self.selectedLayer = self.vpLayers[selectedLayerIndex]
         #self.iface.messageBar().pushMessage("Layer Selected", self.selectedLayer.name(), level=Qgis.Info, duration=1)
-        QgsMessageLog.logMessage("Layer Selected: " + self.selectedLayer.name(), level=Qgis.Info)
+        QgsMessageLog.logMessage("Layer Selected: " + self.selectedLayer.name(), tag="Five Color Map", level=Qgis.Info)
         fields = self.selectedLayer.fields()
         self.fieldNameList = [field.name() for field in fields]
         self.dlg.comboBoxField.addItems(self.fieldNameList)
@@ -220,40 +221,62 @@ class FiveColorMap:
         self.selectedFieldText = self.dlg.comboBoxField.itemText(self.dlg.comboBoxField.currentIndex()) 
         if self.dlg.comboBoxField.currentIndex() > -1: 
             #self.iface.messageBar().pushMessage("Field Selected", self.selectedFieldText, level=Qgis.Info, duration=1)
-            QgsMessageLog.logMessage("Field Selected: " + self.selectedFieldText, level=Qgis.Info)
+            QgsMessageLog.logMessage("Field Selected: " + self.selectedFieldText, tag="Five Color Map", level=Qgis.Info)
 
 
     def show_progress(self, value):
         self.progressBar.setValue(value)
 
         
-    def finished_graph(self, message):
-        QgsMessageLog.logMessage(message, level=Qgis.Info)
+    def finished_computation(self, message):
+        QgsMessageLog.logMessage(message, tag="Five Color Map", level=Qgis.Info)
 
-
+        
     def finished_thread(self):
+        QgsMessageLog.logMessage("Finished thread", tag="Five Color Map", level=Qgis.Info)
         self.iface.messageBar().clearWidgets()
 
 
-    #def create_graph(self, progress_callback):
     def create_graph(self, progress_callback):
         polygons = [QgsGeometry(feature.geometry()) for feature in self.selectedLayer.getFeatures()]
+        boxes = [geometry.boundingBox() for geometry in polygons]
         featureCount = self.selectedLayer.featureCount()
         graph = [set() for i in range(featureCount)]
+        QgsMessageLog.logMessage("Total Features: " + str(featureCount), tag="Five Color Map", level=Qgis.Info)
+        counter = 0
+        totalWork = featureCount * (featureCount - 1) / 2
         for i in range(featureCount - 1):
-            #progressBar.setValue(i + 1)
-            progress_callback.emit(i + 1)
+            progress_callback.emit((counter + 1) * 100 / totalWork)
+            polyi = polygons[i]
+            bboxi = boxes[i]
             for j in range(i + 1, featureCount):
-                if polygons[i].touches(polygons[j]):
-                    intersection = polygons[i].intersection(polygons[j])
-                    if intersection is not None and intersection.type() in [1, 2]:
+                counter = counter + 1
+                if bboxi.intersects(boxes[j]):
+                    intersection = polyi.intersection(polygons[j])
+                    if intersection is not None and not intersection.isEmpty():
                         graph[i].add(j)
                         graph[j].add(i)
-            QgsMessageLog.logMessage("Feature: " + str(i), level=Qgis.Info)
-        return "Graph completed."
-
-
+        return self.compute_colors(graph)
         
+
+    def compute_colors(self, graph):
+        QgsMessageLog.logMessage("Starting compute_colors", tag="Five Color Map", level=Qgis.Info)
+        algorithm = FiveColor(graph)
+        colorList = algorithm.run()
+        QgsMessageLog.logMessage("Finished compute_colors", tag="Five Color Map", level=Qgis.Info)
+
+        QgsMessageLog.logMessage("Starting layer updates", tag="Five Color Map", level=Qgis.Info)
+        featureList = self.selectedLayer.getFeatures()
+        self.selectedLayer.startEditing()
+        for feature, color in zip(featureList, colorList):
+            self.selectedLayer.changeAttributeValue(feature.id(), self.fieldNameList.index(self.selectedFieldText), color)
+            #QgsMessageLog.logMessage("Feature = " + str(feature.id()) + "\t" + self.selectedFieldText + " = " + str(color), tag="Five Color Map", level=Qgis.Info)
+            #QgsMessageLog.logMessage("Feature: " + str(feature.id()) + "\tColor: " + str(color) + "\t" + feature.attribute("NAME"), tag="Five Color Map", level=Qgis.Info)
+            #QgsMessageLog.logMessage("Feature: " + str(feature.id()) + "\tColor: " + str(color) + "\t" + feature.attribute("ADMIN"), tag="Five Color Map", level=Qgis.Info)
+        #self.selectedLayer.commitChanges()
+        return "Finished layer updates"
+
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -281,95 +304,21 @@ class FiveColorMap:
 
         # See if OK was pressed
         if result:
-            progressMessageBar = self.iface.messageBar().createMessage("Creating graph from polygons...")
+            # Setup progress bar
+            progressMessageBar = self.iface.messageBar().createMessage("Computing Five Color Map...")
             self.progressBar = QProgressBar()
-            self.progressBar.setMaximum(self.selectedLayer.featureCount())
+            self.progressBar.setMaximum(100)
             self.progressBar.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
             progressMessageBar.layout().addWidget(self.progressBar)
             self.iface.messageBar().pushWidget(progressMessageBar, Qgis.Info)
 
             # Pass the function to execute
             worker = Worker(self.create_graph)
-            worker.signals.result.connect(self.finished_graph)
+            worker.signals.result.connect(self.finished_computation)
             worker.signals.finished.connect(self.finished_thread)
             worker.signals.progress.connect(self.show_progress)
 
             # Execute
             self.threadpool.start(worker)
 
-            #featureList = self.selectedLayer.getFeatures()
-            #for feature in featureList:
-            #    QgsMessageLog.logMessage("Feature: " + str(feature.id()), level=Qgis.Info)
-            #self.selectedLayer.startEditing()
-            #self.selectedLayer.changeAttributeValue(0, self.fieldNameList.index(self.selectedFieldText), 1)
-            #self.selectedLayer.commitChanges()
 
-
-class WorkerSignals(QObject):
-    '''
-    Defines the signals available from a running worker thread.
-
-    Supported signals are:
-
-    finished
-        No data
-
-    error
-        `tuple` (exctype, value, traceback.format_exc() )
-
-    result
-        `object` data returned from processing, anything
-
-    progress
-        `int` indicating % progress
-
-    '''
-    finished = pyqtSignal()
-    error = pyqtSignal(tuple)
-    result = pyqtSignal(object)
-    progress = pyqtSignal(int)
-
-
-class Worker(QRunnable):
-    '''
-    Worker thread
-
-    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
-
-    :param callback: The function callback to run on this worker thread. Supplied args and 
-                     kwargs will be passed through to the runner.
-    :type callback: function
-    :param args: Arguments to pass to the callback function
-    :param kwargs: Keywords to pass to the callback function
-
-    '''
-
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-
-        # Store constructor arguments (re-used for processing)
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-        # Add the callback to our kwargs
-        self.kwargs['progress_callback'] = self.signals.progress
-
-    @pyqtSlot()
-    def run(self):
-        '''
-        Initialise the runner function with passed args, kwargs.
-        '''
-
-        # Retrieve args/kwargs here; and fire processing using them
-        try:
-            result = self.fn(*self.args, **self.kwargs)
-        except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
-            self.signals.error.emit((exctype, value, traceback.format_exc()))
-        else:
-            self.signals.result.emit(result)  # Return the result of the processing
-        finally:
-            self.signals.finished.emit()  # Done
