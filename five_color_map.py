@@ -35,7 +35,7 @@ from .resources import *
 from .five_color_map_dialog import FiveColorMapDialog
 import os.path
 
-from qgis.core import QgsProject, QgsMapLayer, QgsWkbTypes, Qgis, QgsMessageLog, QgsGeometry
+from qgis.core import QgsProject, QgsMapLayer, QgsWkbTypes, Qgis, QgsMessageLog, QgsGeometry, edit
 from qgis.gui import QgsMessageBar
 
 from .worker import WorkerSignals, Worker
@@ -266,10 +266,17 @@ class FiveColorMap:
         QgsMessageLog.logMessage("Finished compute_colors", tag="Five Color Map", level=Qgis.Info)
 
         QgsMessageLog.logMessage("Starting layer updates", tag="Five Color Map", level=Qgis.Info)
+
         featureList = self.selectedLayer.getFeatures()
-        self.selectedLayer.startEditing()
+        fieldIndex = self.fieldNameList.index(self.selectedFieldText)
+        update_dict = {}
         for feature, color in zip(featureList, colorList):
-            self.selectedLayer.changeAttributeValue(feature.id(), self.fieldNameList.index(self.selectedFieldText), color)
+            update_dict[feature.id()] = {fieldIndex: color}
+        self.selectedLayer.dataProvider().changeAttributeValues(update_dict)
+        
+        #self.selectedLayer.startEditing()
+        #for feature, color in zip(featureList, colorList):
+        #    self.selectedLayer.changeAttributeValue(feature.id(), fieldIndex, color)
             #QgsMessageLog.logMessage("Feature = " + str(feature.id()) + "\t" + self.selectedFieldText + " = " + str(color), tag="Five Color Map", level=Qgis.Info)
             #QgsMessageLog.logMessage("Feature: " + str(feature.id()) + "\tColor: " + str(color) + "\t" + feature.attribute("NAME"), tag="Five Color Map", level=Qgis.Info)
             #QgsMessageLog.logMessage("Feature: " + str(feature.id()) + "\tColor: " + str(color) + "\t" + feature.attribute("ADMIN"), tag="Five Color Map", level=Qgis.Info)
