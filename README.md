@@ -1,5 +1,8 @@
 # fivecolormap
-This is a plugin for QGIS 3.0 that colors each shape differently than its neighbors using five colors.
+This is a plugin for QGIS 3.0 that colors each polygon in a layer differently than its neighbors using five colors (or fewer).
+
+## Plugin Installation
+![Plugin Installation](https://github.com/erikshelley/fivecolormap/blob/master/plugin-installation.png)
 
 ## Menu Option
 ![Menu Option](https://github.com/erikshelley/fivecolormap/blob/master/menu-option.png)
