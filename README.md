@@ -20,3 +20,7 @@ This is a plugin for QGIS 3.0 that colors each polygon in a layer differently th
 Click on the map below to view the high resolution version (7680x3920 33MB).
 [![Creative World Map](https://github.com/erikshelley/fivecolormap/blob/master/sample-world-map-1024x500.png)](https://drive.google.com/file/d/1k-kqo2Q3pGQkUyNJxOKnrN4-ibd5Kwmr/view?usp=sharing)
 
+Excerpt
+![Middle East Relief Map](https://github.com/erikshelley/fivecolormap/blob/master/sample-middle-east-relief-map.png)
+
+
