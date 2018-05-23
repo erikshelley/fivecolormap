@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>565</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,9 +16,9 @@
   <widget class="QDialogButtonBox" name="button_box">
    <property name="geometry">
     <rect>
-     <x>30</x>
-     <y>240</y>
-     <width>341</width>
+     <x>20</x>
+     <y>520</y>
+     <width>361</width>
      <height>32</height>
     </rect>
    </property>
@@ -33,7 +33,7 @@
    <property name="geometry">
     <rect>
      <x>130</x>
-     <y>80</y>
+     <y>460</y>
      <width>251</width>
      <height>22</height>
     </rect>
@@ -43,7 +43,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>80</y>
+     <y>460</y>
      <width>111</width>
      <height>20</height>
     </rect>
@@ -79,7 +79,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>110</y>
+     <y>490</y>
      <width>111</width>
      <height>20</height>
     </rect>
@@ -92,10 +92,47 @@
    <property name="geometry">
     <rect>
      <x>130</x>
-     <y>110</y>
+     <y>490</y>
      <width>251</width>
      <height>22</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_2">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>50</y>
+     <width>361</width>
+     <height>391</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This plugin determins how to color a map with five colors (or fewer) so that no adjacent regions share the same color.&lt;/p&gt;
+&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Before Running the Plugin&lt;/span&gt;&lt;/p&gt;
+&lt;ol style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;
+&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Add a &lt;span style=&quot; font-weight:600; color:#aa0000;&quot;&gt;vector polygon layer&lt;/span&gt; to your map. The plugin does not support non-vector layers or non-polygon layers (points or lines).&lt;/li&gt;
+&lt;li style=&quot; margin-top:3px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Add an &lt;span style=&quot; font-weight:600; color:#aa0000;&quot;&gt;integer field&lt;/span&gt; to your layer to hold the color index. The plugin will fill this field with numbers from 0 to 4.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Run the Plugin&lt;/span&gt;&lt;/p&gt;
+&lt;ol style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;
+&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Select your vector polygon layer in the first dropdown below.&lt;/li&gt;
+&lt;li style=&quot; margin-top:3px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Select your integer field in the second dropdown below.&lt;/li&gt;
+&lt;li style=&quot; margin-top:3px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Click OK.&lt;/li&gt;
+&lt;li style=&quot; margin-top:3px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Confirm your selected layer and field then click OK.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;After Running the Plugin&lt;/span&gt;&lt;/p&gt;
+&lt;ol style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;
+&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Setup &lt;span style=&quot; font-weight:600; color:#aa0000;&quot;&gt;rule based formatting&lt;/span&gt; for your layer. Add a rule to cover each value in your integer field and give each rule a different color.&lt;/li&gt;
+&lt;li style=&quot; margin-top:3px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Optionally &lt;span style=&quot; font-weight:600; color:#aa0000;&quot;&gt;update color index values&lt;/span&gt; in the layer attribute table for any regions you would like to change. For example, you may want Australia and New Zealand to have different colors in a world map even though they do not touch each other.&lt;/li&gt;
+&lt;li style=&quot; margin-top:3px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Optionally &lt;span style=&quot; font-weight:600; color:#aa0000;&quot;&gt;save your layer style&lt;/span&gt; so that it can be easily loaded into other layers where the five color map plugin has been used. Be sure to use the same field name for the color index.&lt;/li&gt;
+&lt;/ol&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="textFormat">
+    <enum>Qt::RichText</enum>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
    </property>
   </widget>
  </widget>

@@ -10,7 +10,7 @@
 name=FiveColorMap
 qgisMinimumVersion=3.0
 description=This plugin colors each shape differently than its neighbors using five colors
-version=0.1
+version=0.5
 author=Erik Shelley
 email=erik@erikshelley.com
 

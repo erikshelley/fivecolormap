@@ -20,6 +20,37 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+ Tests
+ - Plugin Dialog
+   - Layer Selection
+     - Show polygon vector layers in dropdown (0, 1, 2+)
+     - Do not show non-polygon vector layers in dropdown
+     - Do not show non-vector layers in dropdown
+     - If map has selected polygon vector layer then pre-select it in dropdown
+     - No error if map has selected non-polygon vector layer
+     - No error if map has selected non-vector layer
+     - No error if map has no selected layer
+   - Field Selection
+     - Show integer fields in dropdown (0, 1, 2+)
+     - Do not show non-integer fields in dropdown
+   - Show explanation of plugin function
+   - OK Button
+     - Warning pop-up if no layer selected
+     - Warning pop-up if no field selected
+     - Confirmation pop-up shown when OK button pressed
+   - Cancel Button
+     - Color mapping not performed when Cancel button pressed
+ - Confirmation Pop-Up
+   - Message asking for confirmation to update selected field in selected layer
+   - Color mapping performed when OK button pressed
+   - Pop-Up closed when Cancel button pressed, Plugin Dialog still open
+ - Color Mapping
+   - No error on layer with no features
+   - No error on layer with one feature
+   - Selected field updated on layer with multiple features
+   - No error on layer with a large number of features (3,000)
+
 """
 #from PyQt5.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QObject
 #from PyQt5.QtGui import QIcon
@@ -87,11 +118,11 @@ class FiveColorMap:
         self.toolbar = self.iface.addToolBar(u'FiveColorMap')
         self.toolbar.setObjectName(u'FiveColorMap')
 
-        #self.dlg.lineEdit.clear()
-        #self.dlg.pushButton.clicked.connect(self.select_output_file)
         self.dlg.comboBoxLayer.currentIndexChanged.connect(self.layer_changed)
         self.dlg.comboBoxField.currentIndexChanged.connect(self.field_changed)
         self.threadpool = QThreadPool()
+
+        self.debug = False
 
 
     # noinspection PyMethodMayBeStatic
@@ -211,17 +242,24 @@ class FiveColorMap:
         selectedLayerIndex = self.dlg.comboBoxLayer.currentIndex()
         self.selectedLayer = self.vpLayers[selectedLayerIndex]
         #self.iface.messageBar().pushMessage("Layer Selected", self.selectedLayer.name(), level=Qgis.Info, duration=1)
-        QgsMessageLog.logMessage("Layer Selected: " + self.selectedLayer.name(), tag="Five Color Map", level=Qgis.Info)
+        if self.debug:
+            QgsMessageLog.logMessage("Layer Selected: " + self.selectedLayer.name(), tag="Five Color Map", level=Qgis.Info)
         fields = self.selectedLayer.fields()
-        self.fieldNameList = [field.name() for field in fields]
-        self.dlg.comboBoxField.addItems(self.fieldNameList)
+        #self.fieldNameList = [field.name() for field in fields]
+        #self.dlg.comboBoxField.addItems(self.fieldNameList)
+        index = 0
+        for field in fields:
+            if field.typeName() == u'Integer':
+                self.dlg.comboBoxField.addItem(field.name(), index)
+            index = index + 1
 
 
     def field_changed(self):
-        self.selectedFieldText = self.dlg.comboBoxField.itemText(self.dlg.comboBoxField.currentIndex()) 
-        if self.dlg.comboBoxField.currentIndex() > -1: 
-            #self.iface.messageBar().pushMessage("Field Selected", self.selectedFieldText, level=Qgis.Info, duration=1)
-            QgsMessageLog.logMessage("Field Selected: " + self.selectedFieldText, tag="Five Color Map", level=Qgis.Info)
+        self.selectedFieldName = self.dlg.comboBoxField.itemText(self.dlg.comboBoxField.currentIndex()) 
+        self.selectedFieldIndex = self.dlg.comboBoxField.itemData(self.dlg.comboBoxField.currentIndex())
+        if self.debug and self.dlg.comboBoxField.currentIndex() > -1: 
+            #self.iface.messageBar().pushMessage("Field Selected", self.selectedFieldName, level=Qgis.Info, duration=1)
+            QgsMessageLog.logMessage("Field Selected: " + self.selectedFieldName, tag="Five Color Map", level=Qgis.Info)
 
 
     def show_progress(self, value):
@@ -229,12 +267,16 @@ class FiveColorMap:
 
         
     def finished_computation(self, message):
-        QgsMessageLog.logMessage(message, tag="Five Color Map", level=Qgis.Info)
+        if self.debug:
+            QgsMessageLog.logMessage(message, tag="Five Color Map", level=Qgis.Info)
 
         
     def finished_thread(self):
-        QgsMessageLog.logMessage("Finished thread", tag="Five Color Map", level=Qgis.Info)
+        if self.debug:
+            QgsMessageLog.logMessage("Finished thread", tag="Five Color Map", level=Qgis.Info)
         self.iface.messageBar().clearWidgets()
+        messageBar = self.iface.messageBar().createMessage("Five Color Map : Finished! <b>" + self.selectedFieldName + "</b> updated in <b>" + self.selectedLayer.name() + "</b>.")
+        self.iface.messageBar().pushWidget(messageBar, Qgis.Info, duration=5)
 
 
     def create_graph(self, progress_callback):
@@ -242,7 +284,8 @@ class FiveColorMap:
         boxes = [geometry.boundingBox() for geometry in polygons]
         featureCount = self.selectedLayer.featureCount()
         graph = [set() for i in range(featureCount)]
-        QgsMessageLog.logMessage("Total Features: " + str(featureCount), tag="Five Color Map", level=Qgis.Info)
+        if self.debug:
+            QgsMessageLog.logMessage("Total Features: " + str(featureCount), tag="Five Color Map", level=Qgis.Info)
         counter = 0
         totalWork = featureCount * (featureCount - 1) / 2
         for i in range(featureCount - 1):
@@ -260,28 +303,72 @@ class FiveColorMap:
         
 
     def compute_colors(self, graph):
-        QgsMessageLog.logMessage("Starting compute_colors", tag="Five Color Map", level=Qgis.Info)
+        # Run algorith to compute colors
+        if self.debug:
+            QgsMessageLog.logMessage("Starting compute_colors", tag="Five Color Map", level=Qgis.Info)
         algorithm = FiveColor(graph)
         colorList = algorithm.run()
-        QgsMessageLog.logMessage("Finished compute_colors", tag="Five Color Map", level=Qgis.Info)
+        if self.debug:
+            QgsMessageLog.logMessage("Finished compute_colors", tag="Five Color Map", level=Qgis.Info)
+            QgsMessageLog.logMessage("Starting layer updates", tag="Five Color Map", level=Qgis.Info)
+        
+        # Update field values in selected layer
 
-        QgsMessageLog.logMessage("Starting layer updates", tag="Five Color Map", level=Qgis.Info)
+        # Using changeAttributeValue one field at-a-time causes QGIS to crash for layers with a large number of features 
+        # therefore changeAttributeValues is used instead to update all features at once
 
         featureList = self.selectedLayer.getFeatures()
-        fieldIndex = self.fieldNameList.index(self.selectedFieldText)
+        #self.selectedLayer.startEditing()
         update_dict = {}
         for feature, color in zip(featureList, colorList):
-            update_dict[feature.id()] = {fieldIndex: color}
-        self.selectedLayer.dataProvider().changeAttributeValues(update_dict)
-        
-        #self.selectedLayer.startEditing()
-        #for feature, color in zip(featureList, colorList):
-        #    self.selectedLayer.changeAttributeValue(feature.id(), fieldIndex, color)
-            #QgsMessageLog.logMessage("Feature = " + str(feature.id()) + "\t" + self.selectedFieldText + " = " + str(color), tag="Five Color Map", level=Qgis.Info)
-            #QgsMessageLog.logMessage("Feature: " + str(feature.id()) + "\tColor: " + str(color) + "\t" + feature.attribute("NAME"), tag="Five Color Map", level=Qgis.Info)
-            #QgsMessageLog.logMessage("Feature: " + str(feature.id()) + "\tColor: " + str(color) + "\t" + feature.attribute("ADMIN"), tag="Five Color Map", level=Qgis.Info)
+        #    self.selectedLayer.changeAttributeValue(feature.id(), self.selectedFieldIndex, color)
+        #    if self.debug:
+        #        QgsMessageLog.logMessage("Feature = " + str(feature.id()) + "\t" + self.selectedFieldName + " = " + str(color), tag="Five Color Map", level=Qgis.Info)
+            update_dict[feature.id()] = {self.selectedFieldIndex: color}
         #self.selectedLayer.commitChanges()
+        self.selectedLayer.dataProvider().changeAttributeValues(update_dict)
         return "Finished layer updates"
+
+
+    def show_warning_message_bar(self, message):
+        messageBar = self.iface.messageBar().createMessage(message)
+        self.iface.messageBar().pushWidget(messageBar, Qgis.Warning)
+
+
+    def show_warning_message_box(self):
+        messageBox = QMessageBox()
+        messageBox.setIcon(QMessageBox.Warning)
+        messageBox.setWindowTitle("Five Color Map")
+        messageBox.setTextFormat(QtCore.Qt.RichText)
+        messageBox.setText("<h2>Changes made to your layer cannot be undone</h2>")
+        messageBox.setInformativeText("For the layer and field shown below all values will be overwritten.<pre>Layer = " + self.selectedLayer.name() + "\nField = " + self.selectedFieldName + "</pre>")
+        messageBox.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        messageBox.buttonClicked.connect(self.button_pressed)
+        messageBox.exec_()
+
+
+    def button_pressed(self, i):
+        if i.text() == "Cancel":
+            # Reload plugin
+            self.run()
+
+        if i.text() == "OK":
+            # Setup progress bar
+            progressMessageBar = self.iface.messageBar().createMessage("Five Color Map : Computing Colors...")
+            self.progressBar = QProgressBar()
+            self.progressBar.setMaximum(100)
+            self.progressBar.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+            progressMessageBar.layout().addWidget(self.progressBar)
+            self.iface.messageBar().pushWidget(progressMessageBar, Qgis.Info)
+
+            # Pass the function to execute
+            worker = Worker(self.create_graph)
+            worker.signals.result.connect(self.finished_computation)
+            worker.signals.finished.connect(self.finished_thread)
+            worker.signals.progress.connect(self.show_progress)
+
+            # Execute
+            self.threadpool.start(worker)
 
 
     def run(self):
@@ -311,21 +398,15 @@ class FiveColorMap:
 
         # See if OK was pressed
         if result:
-            # Setup progress bar
-            progressMessageBar = self.iface.messageBar().createMessage("Computing Five Color Map...")
-            self.progressBar = QProgressBar()
-            self.progressBar.setMaximum(100)
-            self.progressBar.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
-            progressMessageBar.layout().addWidget(self.progressBar)
-            self.iface.messageBar().pushWidget(progressMessageBar, Qgis.Info)
+            if self.debug:
+                QgsMessageLog.logMessage("Layer: " + str(self.dlg.comboBoxLayer.currentIndex()), tag="Five Color Map", level=Qgis.Info)
+                QgsMessageLog.logMessage("Field: " + str(self.dlg.comboBoxField.currentIndex()), tag="Five Color Map", level=Qgis.Info)
+            if self.dlg.comboBoxLayer.currentIndex() == -1:
+                self.show_warning_message_bar("No Layer Selected")
+            elif self.dlg.comboBoxField.currentIndex() == -1:
+                self.show_warning_message_bar("No Field Selected")
+            else:
+                self.show_warning_message_box()
 
-            # Pass the function to execute
-            worker = Worker(self.create_graph)
-            worker.signals.result.connect(self.finished_computation)
-            worker.signals.finished.connect(self.finished_thread)
-            worker.signals.progress.connect(self.show_progress)
-
-            # Execute
-            self.threadpool.start(worker)
 
 
